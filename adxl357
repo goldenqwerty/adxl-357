@@ -1,0 +1,84 @@
+import struct
+
+ADXL357_ADDRESS          = 0x53
+ADXL357_REG_DEVID        = 0x00 # Device ID
+ADXL357_REG_DATAX0       = 0x08 # X-axis data 0 (20 bytes for X/Y/Z to 0x10)
+ADXL357_REG_POWER_CTL    = 0x2D # Power-saving features control
+
+ADXL357_RANGE            = 0x2C
+ADXL357_FILTER           = 0x28
+
+ADXL357_DATARATE_4000_HZ = 0x00
+ADXL357_DATARATE_2000_HZ = 0x01
+ADXL357_DATARATE_1000_HZ = 0x02
+ADXL357_DATARATE_500_HZ = 0x03
+ADXL357_DATARATE_250_HZ = 0x04
+ADXL357_DATARATE_125_HZ = 0x05
+ADXL357_DATARATE_62_5HZ  = 0x06
+ADXL357_DATARATE_31_25_HZ = 0x07
+ADXL357_DATARATE_15_625_HZ   = 0x08
+ADXL357_DATARATE_7_813_HZ   = 0x09
+ADXL357_DATARATE_3_906_HZ  = 0x0A
+
+ADXL357_RANGE_10_G        = 0x01 
+ADXL357_RANGE_20_G        = 0x02 
+ADXL357_RANGE_40_G       = 0x03 
+
+ADXL357_FIFO_DATA = 0x11
+
+
+class ADXL357(object):
+   
+
+    def __init__(self, address=ADXL357_ADDRESS, i2c=None, **kwargs):
+        """Initialize the accelerometer using its I2C interface.
+        """
+        # Setup I2C interface for the device.
+        if i2c is None:
+            import Adafruit_GPIO.I2C as I2C
+            i2c = I2C
+        self._device = i2c.get_i2c_device(address, **kwargs)
+        # Check that the acclerometer is connected, then enable it.
+        if self._device.readU8(ADXL357_REG_DEVID) == 0xAD:
+            pass
+        else:
+            raise RuntimeError('Failed to find the expected device ID register value, check your wiring.')
+
+    def set_range(self, value):
+
+        # Read the data format register to preserve bits.  Update the data
+        # rate, make sure that the FULL-RES bit is enabled for range scaling
+        format_reg = self._device.readU8(ADXL357_RANGE) & ~0x03
+        format_reg |= value
+        
+        # Write the updated format register.
+        self._device.write8(ADXL357_RANGE, format_reg)
+
+    def get_range(self):
+        """Retrieve the current range of the accelerometer.  See set_range for
+        the possible range constant values that will be returned.
+        """
+        return self._device.readU8(ADXL345_RANGE) & 0x03
+
+    def set_data_rate(self, rate):     
+        format_reg = self._device.readU8(ADXL357_FILTER) & ~0x0F
+        format_reg |= rate
+        
+        self._device.write8(ADXL357_FILTER, format_reg)
+
+    def get_data_rate(self):
+        """Retrieve the current data rate.  See set_data_rate for the possible
+        data rate constant values that will be returned.
+        """
+        return self._device.readU8(ADXL357_FILTER) & 0x0F
+
+    def read(self):
+       
+        raw = self._device.readList(ADXL357_REG_DATAX0, 9)
+        return raw
+        
+    def read_FIFO (self):
+        fifo = self._device.readList(ADXL357_FIFO_DATA,9)
+        return fifo
+    
+    
